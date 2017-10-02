@@ -67,6 +67,7 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL " " FORCE)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL " " FORCE)
 set(GLFW_BUILD_INSTALL OFF CACHE BOOL " " FORCE)
 set(GLFW_INSTALL OFF CACHE BOOL " " FORCE)
+set(GLFW_USE_CHDIR OFF CACHE BOOL " " FORCE)
 set(BUILD_SHARED_LIBS ${NANOGUI_BUILD_SHARED} CACHE BOOL " " FORCE)
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -259,19 +260,28 @@ endif()
 
 include_directories(${NANOGUI_EIGEN_INCLUDE_DIR} ext/glfw/include ext/nanovg/src include ${CMAKE_CURRENT_BINARY_DIR})
 
-# Run simple C converter to put font files into the data segment
-add_executable(bin2c resources/bin2c.c)
-set(bin2c_cmdline nanogui_resources.cpp nanogui_resources.h)
+
+# Run simple cmake converter to put font files into the data segment
+
+# Glob up resource files
 file(GLOB resources "${CMAKE_CURRENT_SOURCE_DIR}/resources/*.ttf")
-foreach(file ${resources})
-  list(APPEND bin2c_cmdline ${file})
-endforeach()
+
+# Concatenate resource files into a comma separated string
+string (REGEX REPLACE "([^\\]|^);" "\\1," resources_string "${resources}")
+string (REGEX REPLACE "[\\](.)" "\\1" resources_string "${resources_string}")
+
+# Create command line for running bin2c cmake script
+set(bin2c_cmdline
+  -DOUTPUT_C=nanogui_resources.cpp
+  -DOUTPUT_H=nanogui_resources.h
+  "-DINPUT_FILES=${resources_string}"
+  -P "${CMAKE_CURRENT_SOURCE_DIR}/resources/bin2c.cmake")
 
 # Run bin2c on resource files
 add_custom_command(
   OUTPUT nanogui_resources.cpp nanogui_resources.h
-  COMMAND $<TARGET_FILE:bin2c> ARGS ${bin2c_cmdline}
-  DEPENDS bin2c ${resources}
+  COMMAND ${CMAKE_COMMAND} ARGS ${bin2c_cmdline}
+  DEPENDS ${resources}
   COMMENT "Running bin2c"
   PRE_BUILD VERBATIM)
 
@@ -290,6 +300,11 @@ if (APPLE OR CMAKE_SYSTEM MATCHES "Linux")
   add_definitions(-DCORO_SJLJ)
   include_directories(ext/coro)
   list(APPEND LIBNANOGUI_PYTHON_EXTRA_SOURCE ext/coro/coro.c)
+endif()
+
+if (APPLE)
+  # Use automatic reference counting for Objective-C portions
+  add_compile_options(-fobjc-arc)
 endif()
 
 add_definitions(${NANOGUI_EXTRA_DEFS})
@@ -349,7 +364,7 @@ if (NANOGUI_BUILD_SHARED)
 endif()
 
 # Compile/link flags for NanoGUI
-set_property(TARGET nanogui-obj APPEND PROPERTY COMPILE_DEFINITIONS "NANOGUI_BUILD")
+set_property(TARGET nanogui-obj APPEND PROPERTY COMPILE_DEFINITIONS "NANOGUI_BUILD;NVG_BUILD")
 
 if (NANOGUI_USE_GLAD AND NANOGUI_BUILD_SHARED)
   set_property(TARGET nanogui-obj APPEND PROPERTY COMPILE_DEFINITIONS
@@ -371,7 +386,7 @@ endif()
 
 if (NANOGUI_BUILD_SHARED)
   # When GLFW is merged into the NanoGUI library, this flag must be specified
-  set_property(TARGET nanogui-obj APPEND PROPERTY COMPILE_DEFINITIONS "_GLFW_BUILD_DLL")
+  set_property(TARGET nanogui-obj APPEND PROPERTY COMPILE_DEFINITIONS "_GLFW_BUILD_DLL;NVG_SHARED")
 endif()
 
 if (NANOGUI_BUILD_SHARED AND NOT ${U_CMAKE_BUILD_TYPE} MATCHES DEB)
@@ -392,31 +407,21 @@ elseif(MSVC)
   set_source_files_properties(ext/nanovg/src/nanovg.c PROPERTIES COMPILE_FLAGS "/wd4005 /wd4456 /wd4457")
 endif()
 
-if (NANOGUI_BUILD_SHARED)
-  set_source_files_properties(ext/nanovg/src/nanovg.c PROPERTIES COMPILE_DEFINITIONS "NVG_BUILD;NVG_SHARED")
-else()
-  set_source_files_properties(ext/nanovg/src/nanovg.c PROPERTIES COMPILE_DEFINITIONS "NVG_BUILD")
-endif()
-
-
 # Build example application if desired
 if(NANOGUI_BUILD_EXAMPLE)
-  add_executable(example1 src/example1.cpp)
-  add_executable(example2 src/example2.cpp)
-  add_executable(example3 src/example3.cpp)
-  add_executable(example4 src/example4.cpp)
-  target_link_libraries(example1 nanogui ${NANOGUI_EXTRA_LIBS})
-  target_link_libraries(example2 nanogui ${NANOGUI_EXTRA_LIBS})
-  target_link_libraries(example3 nanogui ${NANOGUI_EXTRA_LIBS})
-  target_link_libraries(example4 nanogui ${NANOGUI_EXTRA_LIBS})
+  add_executable(example1      src/example1.cpp)
+  add_executable(example2      src/example2.cpp)
+  add_executable(example3      src/example3.cpp)
+  add_executable(example4      src/example4.cpp)
+  add_executable(example_icons src/example_icons.cpp)
+  target_link_libraries(example1      nanogui ${NANOGUI_EXTRA_LIBS})
+  target_link_libraries(example2      nanogui ${NANOGUI_EXTRA_LIBS})
+  target_link_libraries(example3      nanogui ${NANOGUI_EXTRA_LIBS})
+  target_link_libraries(example4      nanogui ${NANOGUI_EXTRA_LIBS})
+  target_link_libraries(example_icons nanogui ${NANOGUI_EXTRA_LIBS})
 
   # Copy icons for example application
   file(COPY resources/icons DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
-
-  if (NANOGUI_INSTALL)
-    install(TARGETS example1 example2 example3 example4
-            RUNTIME DESTINATION bin)
-  endif()
 endif()
 
 if (NANOGUI_BUILD_PYTHON)
@@ -424,8 +429,8 @@ if (NANOGUI_BUILD_PYTHON)
 
   # Try to autodetect Python (can be overridden manually if needed)
   list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ext/pybind11/tools")
-  set(Python_ADDITIONAL_VERSIONS 3.4 3.5 3.6 3.7)
-  find_package(PythonLibsNew ${MITSUBA_PYTHON_VERSION})
+  set(Python_ADDITIONAL_VERSIONS 3.7 3.6 3.5 3.4)
+  find_package(PythonLibsNew ${NANOGUI_PYTHON_VERSION})
   if (NOT PYTHONLIBS_FOUND)
     # Python not found -- disable the plugin
     set(NANOGUI_BUILD_PYTHON OFF CACHE BOOL "Build a Python plugin for NanoGUI?" FORCE)
@@ -443,7 +448,8 @@ if (NANOGUI_BUILD_PYTHON)
   include_directories("ext/pybind11/include" ${PYTHON_INCLUDE_DIR})
   add_library(nanogui-python-obj OBJECT
     python/main.cpp
-    python/constants.cpp
+    python/constants_glfw.cpp
+    python/constants_entypo.cpp
     python/eigen.cpp
     python/widget.cpp
     python/layout.cpp

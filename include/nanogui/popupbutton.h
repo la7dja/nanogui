@@ -22,6 +22,11 @@ NAMESPACE_BEGIN(nanogui)
  * \class PopupButton popupbutton.h nanogui/popupbutton.h
  *
  * \brief Button which launches a popup widget.
+ *
+ * \remark
+ *     This class overrides \ref nanogui::Widget::mIconExtraScale to be ``0.8f``,
+ *     which affects all subclasses of this Widget.  Subclasses must explicitly
+ *     set a different value if needed (e.g., in their constructor).
  */
 class NANOGUI_EXPORT PopupButton : public Button {
 public:
@@ -46,6 +51,8 @@ public:
 protected:
     Popup *mPopup;
     int mChevronIcon;
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 NAMESPACE_END(nanogui)

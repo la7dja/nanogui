@@ -20,8 +20,9 @@
 namespace half_float { class half; }
 #endif
 
-#ifndef GL_HALF_FLOAT
-#  define GL_HALF_FLOAT 0x140B
+#if !defined(GL_HALF_FLOAT) || defined(DOXYGEN_DOCUMENTATION_BUILD)
+    /// Ensures that ``GL_HALF_FLOAT`` is defined properly for all platforms.
+    #define GL_HALF_FLOAT 0x140B
 #endif
 
 NAMESPACE_BEGIN(nanogui)
@@ -200,6 +201,29 @@ public:
     template <typename T>
     void setUniform(const std::string &name, const Eigen::Matrix<T, 4, 4> &mat, bool warn = true) {
         glUniformMatrix4fv(uniform(name, warn), 1, GL_FALSE, mat.template cast<float>().data());
+    }
+
+    /// Initialize a uniform parameter with a 3x3 affine transform (float)
+    template <typename T>
+    void setUniform(const std::string &name, const Eigen::Transform<T, 3, 3> &affine, bool warn = true) {
+        glUniformMatrix4fv(uniform(name, warn), 1, GL_FALSE, affine.template cast<float>().data());
+    }
+
+    /// Initialize a uniform parameter with a 3x3 matrix (float)
+    template <typename T>
+    void setUniform(const std::string &name, const Eigen::Matrix<T, 3, 3> &mat, bool warn = true) {
+        glUniformMatrix3fv(uniform(name, warn), 1, GL_FALSE, mat.template cast<float>().data());
+    }
+
+    /// Initialize a uniform parameter with a 2x2 affine transform (float)
+    template <typename T>
+    void setUniform(const std::string &name, const Eigen::Transform<T, 2, 2> &affine, bool warn = true) {
+        glUniformMatrix3fv(uniform(name, warn), 1, GL_FALSE, affine.template cast<float>().data());
+    }
+
+    /// Initialize a uniform parameter with a boolean value
+    void setUniform(const std::string &name, bool value, bool warn = true) {
+        glUniform1i(uniform(name, warn), (int)value);
     }
 
     /// Initialize a uniform parameter with an integer value
@@ -415,6 +439,8 @@ protected:
     GLuint mFramebuffer, mDepth, mColor;
     Vector2i mSize;
     int mSamples;
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 //  ----------------------------------------------------
@@ -504,6 +530,8 @@ protected:
     Vector2i mSize;
     Quaternionf mQuat, mIncr;
     float mSpeedFactor;
+public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 //  ----------------------------------------------------

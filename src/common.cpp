@@ -12,7 +12,7 @@
 #include <nanogui/screen.h>
 
 #if defined(_WIN32)
-#include <windows.h>
+#  include <windows.h>
 #endif
 
 #include <nanogui/opengl.h>
@@ -22,19 +22,27 @@
 #include <iostream>
 
 #if !defined(_WIN32)
-    #include <locale.h>
-    #include <signal.h>
-    #include <sys/dir.h>
+#  include <locale.h>
+#  include <signal.h>
+#  include <sys/dir.h>
 #endif
 
 NAMESPACE_BEGIN(nanogui)
 
 extern std::map<GLFWwindow *, Screen *> __nanogui_screens;
 
+#if defined(__APPLE__)
+  extern void disable_saved_application_state_osx();
+#endif
+
 void init() {
     #if !defined(_WIN32)
         /* Avoid locale-related number parsing issues */
         setlocale(LC_NUMERIC, "C");
+    #endif
+
+    #if defined(__APPLE__)
+        disable_saved_application_state_osx();
     #endif
 
     glfwSetErrorCallback(
@@ -107,7 +115,7 @@ void mainloop(int refresh) {
         glfwPollEvents();
     } catch (const std::exception &e) {
         std::cerr << "Caught exception in main loop: " << e.what() << std::endl;
-        abort();
+        leave();
     }
 
     if (refresh > 0)
