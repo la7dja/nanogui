@@ -345,7 +345,6 @@ void Screen::initialize(GLFWwindow *window, bool shutdownGLFWOnDestruct) {
     mProcessEvents = true;
     __nanogui_screens[mGLFWWindow] = this;
 
-#if !defined(NANOGUI_CURSOR_DISABLED)
     for (int i=0; i < (int) Cursor::CursorCount; ++i)
         mCursors[i] = glfwCreateStandardCursor(GLFW_ARROW_CURSOR + i);
 
