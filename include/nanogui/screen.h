@@ -183,7 +183,7 @@ public:
 
     /* Internal helper functions */
     void updateFocus(Widget *widget);
-    void disposeWindow(Window *window);
+    void disposeWidget(Widget *widget);
     void centerWindow(Window *window);
     void moveWindowToFront(Window *window);
     void drawWidgets();
