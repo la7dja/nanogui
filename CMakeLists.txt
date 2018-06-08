@@ -1,5 +1,10 @@
 cmake_minimum_required (VERSION 2.8.12)
 
+if (POLICY CMP0048)
+  # cmake warns if loaded from a min-3.0-required parent dir, so silence the warning:
+  cmake_policy(SET CMP0048 NEW)
+endif()
+
 project("NanoGUI")
 
 if (POLICY CMP0058)
@@ -76,6 +81,12 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/ext/glfw" "ext_build/glfw")
+# Two targets have now been defined: `glfw_objects`, which will be merged into
+# NanoGUI at the end, and `glfw`.  The `glfw` target is the library itself
+# (e.g., libglfw.so), but can be skipped as we do not need to link against it
+# (because we merge `glfw_objects` into NanoGUI).  Skipping is required for
+# XCode, but preferable for all build systems (reduces build artifacts).
+set_target_properties(glfw PROPERTIES EXCLUDE_FROM_ALL 1 EXCLUDE_FROM_DEFAULT_BUILD 1)
 
 # GL Version support: add NANOVG_GL3_IMPLEMENTATION unless disabled
 if (NANOGUI_DEFAULT_GL_VERSION)
@@ -354,10 +365,25 @@ add_library(nanogui-obj OBJECT
   src/serializer.cpp
 )
 
-add_library(nanogui ${NANOGUI_LIBRARY_TYPE}
-  $<TARGET_OBJECTS:nanogui-obj>
-  $<TARGET_OBJECTS:glfw_objects>
-)
+# XCode has a serious bug where the XCode project produces an invalid target
+# that will not get linked if it consists only of objects from object libraries,
+# it will not generate any products (executables, libraries). The only work
+# around is to add a dummy source file to the library definition. This is an
+# XCode, not a CMake bug. See: https://itk.org/Bug/view.php?id=14044
+if (CMAKE_GENERATOR STREQUAL Xcode)
+  set(XCODE_DUMMY ${CMAKE_CURRENT_BINARY_DIR}/xcode_dummy.cpp)
+  file(WRITE ${XCODE_DUMMY} "")
+  add_library(nanogui ${NANOGUI_LIBRARY_TYPE}
+    ${XCODE_DUMMY}
+    $<TARGET_OBJECTS:nanogui-obj>
+    $<TARGET_OBJECTS:glfw_objects>
+  )
+else()
+  add_library(nanogui ${NANOGUI_LIBRARY_TYPE}
+    $<TARGET_OBJECTS:nanogui-obj>
+    $<TARGET_OBJECTS:glfw_objects>
+  )
+endif()
 
 if (NANOGUI_BUILD_SHARED)
   set_property(TARGET nanogui-obj PROPERTY POSITION_INDEPENDENT_CODE ON)
@@ -545,6 +571,8 @@ else()
     list(APPEND MKDOC_CXX_FLAGS_LIST -I${value})
   endforeach()
 
+  # Make sure platform specific code gets kept in py_doc.h (specifically __doc_nanogui_chdir_to_bundle_parent)
+  list(APPEND MKDOC_COMPILE_DEFINITIONS "DOXYGEN_DOCUMENTATION_BUILD")
   foreach (value ${MKDOC_COMPILE_DEFINITIONS})
     list(APPEND MKDOC_CXX_FLAGS_LIST -D${value})
   endforeach()

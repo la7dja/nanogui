@@ -10,6 +10,13 @@
 */
 
 #include <nanogui/glutil.h>
+
+#if defined(WIN32)
+#  if !defined(__clang__)
+#    include <malloc.h>
+#  endif
+#endif
+
 #include <iostream>
 #include <fstream>
 #include <Eigen/Geometry>
@@ -294,6 +301,15 @@ void GLShader::free() {
     glDeleteShader(mVertexShader);   mVertexShader = 0;
     glDeleteShader(mFragmentShader); mFragmentShader = 0;
     glDeleteShader(mGeometryShader); mGeometryShader = 0;
+}
+
+const GLShader::Buffer &GLShader::attribBuffer(const std::string &name) {
+    for (auto &pair : mBufferObjects) {
+        if (pair.first == name)
+            return pair.second;
+    }
+
+    throw std::runtime_error(mName + ": attribBuffer: " + name + " not found!");
 }
 
 //  ----------------------------------------------------
