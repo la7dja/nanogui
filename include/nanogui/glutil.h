@@ -143,6 +143,9 @@ public:
      */
     void bind();
 
+    /// Unbind this shader
+    void unbind();
+
     /// Release underlying OpenGL objects
     void free();
 

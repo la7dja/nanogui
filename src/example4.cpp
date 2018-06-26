@@ -77,6 +77,7 @@ public:
     MyGLCanvas(Widget *parent) : nanogui::GLCanvas(parent), mRotation(nanogui::Vector3f(0.25f, 0.5f, 0.33f)) {
         using namespace nanogui;
 
+#if defined(NANOVG_GL3_IMPLEMENTATION)
         mShader.init(
             /* An identifying name */
             "a_simple_shader",
@@ -100,6 +101,30 @@ public:
             "    color = frag_color;\n"
             "}"
         );
+#elif defined(NANOVG_GL2_IMPLEMENTATION)
+        mShader.init(
+            /* An identifying name */
+            "a_simple_shader",
+
+            /* Vertex shader */
+            "#version 120\n"
+            "uniform mat4 modelViewProj;\n"
+            "attribute vec3 position;\n"
+            "attribute vec3 color;\n"
+            "varying vec4 frag_color;\n"
+            "void main() {\n"
+            "    frag_color = 3.0 * modelViewProj * vec4(color, 1.0);\n"
+            "    gl_Position = modelViewProj * vec4(position, 1.0);\n"
+            "}",
+
+            /* Fragment shader */
+            "#version 120\n"
+            "varying vec4 frag_color;\n"
+            "void main() {\n"
+            "    gl_FragColor = frag_color;\n"
+            "}"
+        );
+#endif
 
         MatrixXu indices(3, 12); /* Draw a cube */
         indices.col( 0) << 0, 1, 3;

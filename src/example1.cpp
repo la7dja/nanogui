@@ -524,6 +524,8 @@ public:
            buffer object management.
         */
 
+
+#if defined(NANOVG_GL3_IMPLEMENTATION)
         mShader.init(
             /* An identifying name */
             "a_simple_shader",
@@ -544,6 +546,27 @@ public:
             "    color = vec4(vec3(intensity), 1.0);\n"
             "}"
         );
+#elif defined(NANOVG_GL2_IMPLEMENTATION)
+        mShader.init(
+            /* An identifying name */
+            "a_simple_shader",
+
+            /* Vertex shader */
+            "#version 120\n"
+            "uniform mat4 modelViewProj;\n"
+            "attribute vec3 position;\n"
+            "void main() {\n"
+            "    gl_Position = modelViewProj * vec4(position, 1.0);\n"
+            "}",
+
+            /* Fragment shader */
+            "#version 120\n"
+            "uniform float intensity;\n"
+            "void main() {\n"
+            "    gl_FragColor = vec4(vec3(intensity), 1.0);\n"
+            "}"
+        );
+#endif
 
         MatrixXu indices(3, 2); /* Draw 2 triangles */
         indices.col(0) << 0, 1, 2;
