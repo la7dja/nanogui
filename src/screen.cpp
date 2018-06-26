@@ -167,12 +167,16 @@ Screen::Screen(const Vector2i &size, const std::string &caption, bool resizable,
     memset(mCursors, 0, sizeof(GLFWcursor *) * (int) Cursor::CursorCount);
 #endif
 
+#if defined(NANOVG_GL3_IMPLEMENTATION)
     /* Request a forward compatible OpenGL glMajor.glMinor core profile context.
        Default value is an OpenGL 3.3 core profile context. */
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, glMajor);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, glMinor);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#elif defined(NANOVG_GLES2_IMPLEMENTATION) || defined(NANOVG_GLES3_IMPLEMENTATION)
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+#endif
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, glMajor);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, glMinor);
 
     glfwWindowHint(GLFW_SAMPLES, nSamples);
     glfwWindowHint(GLFW_RED_BITS, colorBits);

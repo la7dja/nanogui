@@ -85,7 +85,16 @@ public:
            bool resizable = true, bool fullscreen = false, int colorBits = 8,
            int alphaBits = 8, int depthBits = 24, int stencilBits = 8,
            int nSamples = 0,
-           unsigned int glMajor = 3, unsigned int glMinor = 3);
+#if defined(NANOVG_GL3_IMPLEMENTATION)           
+           unsigned int glMajor = 3, unsigned int glMinor = 3
+#elif defined(NANOVG_GL2_IMPLEMENTATION)
+           unsigned int glMajor = 2, unsigned int glMinor = 1
+#elif defined(NANOVG_GLES2_IMPLEMENTATION)
+           unsigned int glMajor = 2, unsigned int glMinor = 0
+#elif defined(NANOVG_GLES3_IMPLEMENTATION)
+           unsigned int glMajor = 3, unsigned int glMinor = 0
+#endif
+           );
 
     /// Release all resources
     virtual ~Screen();
